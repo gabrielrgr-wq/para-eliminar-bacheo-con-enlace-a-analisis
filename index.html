@@ -171,7 +171,7 @@
   /* ---------- KPI GRID ---------- */
   .kpi-grid{
     display:grid;
-    grid-template-columns:repeat(6, 1fr);
+    grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
     gap:14px;
     margin-top:22px;
   }
@@ -473,10 +473,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>
         Mapa General
       </a>
-      <button class="btn" id="exportBtn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v13"/><path d="M6.5 10.5 12 16l5.5-5.5"/><path d="M5 21h14"/></svg>
-        Exportar CSV
-      </button>
+      <a class="btn" id="pdfBtn" href="https://gabrielrgr-wq.github.io/REPOTES-BACHEO-VIAL/" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M15 3v5h5"/><path d="M9 15h1.5a1.5 1.5 0 0 0 0-3H9v6"/><path d="M13.5 12v6h1.2a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2z"/></svg>
+        Informe PDF
+      </a>
     </div>
   </header>
 
@@ -658,17 +658,29 @@
   function computeAgg(rows){
     var m2 = 0, ton = 0, ok = 0, pend = 0;
     var locSet = {}, mesSet = {};
+    var calleSet = {}, calleByLoc = {};
     rows.forEach(function(r){
       m2 += (r.m2 || 0);
       ton += (r.toneladas || 0);
       if(r.estado === 'Realizado') ok++; else pend++;
       locSet[r.localidad] = true;
       getCalendarMonths(r.mes).forEach(function(m){ mesSet[m] = true; });
+      if(r.calle){
+        calleSet[r.localidad+'|'+r.calle] = true;
+        if(!calleByLoc[r.localidad]) calleByLoc[r.localidad] = {};
+        calleByLoc[r.localidad][r.calle] = true;
+      }
+    });
+    var calleByLocCount = {};
+    Object.keys(calleByLoc).forEach(function(l){
+      calleByLocCount[l] = Object.keys(calleByLoc[l]).length;
     });
     return {
       m2: m2, ton: ton, ok: ok, pend: pend, total: rows.length,
       locCount: Object.keys(locSet).length,
-      mesCount: Object.keys(mesSet).length
+      mesCount: Object.keys(mesSet).length,
+      callesCount: Object.keys(calleSet).length,
+      callesByLoc: calleByLocCount
     };
   }
 
@@ -769,6 +781,16 @@
       value: function(a){ return a.locCount; }, fmt: function(v){ return fmtNum(v,0)+' <small>/ 4</small>'; },
       pct: function(a){ return (a.locCount/TARGET_LOCALIDADES.length*100); },
       sub: function(){ return 'de 4 localidades de UE-1'; } },
+    { key:'calles', label:'Calles intervenidas', color:'#4FB0A5', soft:'rgba(79,176,165,0.15)', icon:'road',
+      value: function(a){ return a.callesCount; }, fmt: function(v){ return fmtNum(v,0); },
+      pct: function(a){ return GLOBAL.callesCount ? (a.callesCount/GLOBAL.callesCount*100) : 0; },
+      sub: function(a){
+        var parts = TARGET_LOCALIDADES
+          .map(function(l){ return [l, a.callesByLoc[l]||0]; })
+          .filter(function(e){ return e[1] > 0; })
+          .map(function(e){ return e[0]+': '+e[1]; });
+        return parts.length ? parts.join(' · ') : 'sin calles en el filtro';
+      } },
     { key:'mes', label:'Meses con actividad', color:'#E0A83D', soft:'var(--gold-soft)', icon:'calendar',
       value: function(a){ return a.mesCount; }, fmt: function(v){ return fmtNum(v,0)+' <small>/ 12</small>'; },
       pct: function(a){ return (a.mesCount/TARGET_MESES_ANIO*100); },
@@ -781,6 +803,7 @@
     check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>',
     alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>',
     pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>',
+    road:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20 9 4h6l5 16"/><path d="M12 4v2.5M12 10v2.5M12 16v2.5"/></svg>',
     calendar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>'
   };
 
@@ -1203,42 +1226,6 @@
   document.getElementById('pPrev').addEventListener('click', function(){ state.page = Math.max(1, state.page-1); render(); });
   document.getElementById('pNext').addEventListener('click', function(){ state.page = state.page+1; render(); });
   document.getElementById('pLast').addEventListener('click', function(){ state.page = 999999; render(); });
-
-  // ---------- CSV Export ----------
-  function exportCSV(){
-    var filtered = sortRows(applyFilters().slice());
-    var headers = ['N°','Mes','Localidad','Calle','Entre 1','Entre 2','M2','Toneladas','Categoria','Estado'];
-    var lines = [headers.join(';')];
-    filtered.forEach(function(r){
-      var row = [
-        r.numero, r.mes, r.localidad,
-        csvSafe(r.calle), csvSafe(r.entre1), csvSafe(r.entre2),
-        r.m2!==null ? String(r.m2).replace('.',',') : '',
-        r.toneladas!==null ? String(r.toneladas).replace('.',',') : '',
-        csvSafe(r.categoria), r.estado
-      ];
-      lines.push(row.join(';'));
-    });
-    var csvContent = '\uFEFF' + lines.join('\r\n');
-    var blob = new Blob([csvContent], {type:'text/csv;charset=utf-8;'});
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    var stamp = new Date().toISOString().slice(0,10);
-    a.href = url;
-    a.download = 'cerobache_ue1_'+stamp+'.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-  function csvSafe(s){
-    s = (s===null||s===undefined) ? '' : String(s);
-    if(s.indexOf(';')>-1 || s.indexOf('"')>-1 || s.indexOf('\n')>-1){
-      s = '"'+s.replace(/"/g,'""')+'"';
-    }
-    return s;
-  }
-  document.getElementById('exportBtn').addEventListener('click', exportCSV);
 
   // ---------- Init ----------
   updateQuickCounts();

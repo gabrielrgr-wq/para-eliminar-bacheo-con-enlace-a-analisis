@@ -86,7 +86,7 @@ El Excel provisto (`BACHEO_GRINOR_2026.xlsx`) es una **planilla de producción d
 - Tabla ordenable por cualquier columna (clic en el encabezado), paginable (25 / 50 / 100 / todas).
 - Ícono 📍 de GPS por fila, clickeable solo cuando el registro tiene coordenadas cargadas.
 - Botón **Mapa General**, enlaza al mapa colaborativo de Google My Maps de la UE-1.
-- Exportación a CSV de exactamente lo que está filtrado y ordenado en pantalla (con codificación compatible con Excel).
+- Botón **Informe PDF** que enlaza al sitio de reportes de bacheo vial (https://gabrielrgr-wq.github.io/REPOTES-BACHEO-VIAL/).
 - Diseño oscuro estilo BI/SaaS, responsive (mobile / tablet / desktop), con el logo oficial de la UE-1 en el header.
 
 ## 🖥️ Ver el dashboard en tu computadora sin subir nada
